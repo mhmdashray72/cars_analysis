@@ -1,17 +1,73 @@
 import streamlit as st
 import pandas as pd
-import joblib
+
+from sklearn.model_selection import train_test_split
+from sklearn.pipeline import Pipeline
+from sklearn.compose import ColumnTransformer
+from sklearn.preprocessing import OneHotEncoder
+from sklearn.ensemble import RandomForestRegressor
 
 st.title("🤖 Car Price Prediction")
 
-model = joblib.load("model.pkl")
-
+# Load Data
 df = pd.read_csv("USA_cars_datasets.csv")
+
+# Cleaning
+df['condition_days'] = (
+    df['condition']
+    .str.extract('(\\d+)')
+    .astype(float)
+)
+
+df.drop(
+    columns=['Unnamed: 0', 'vin', 'lot', 'country', 'condition'],
+    inplace=True
+)
+
+# Features & Target
+X = df.drop(columns=['price'])
+y = df['price']
+
+# Columns
+categorical_cols = X.select_dtypes(include='object').columns
+numeric_cols = X.select_dtypes(exclude='object').columns
+
+# Preprocessor
+preprocessor = ColumnTransformer(
+    transformers=[
+        (
+            'cat',
+            OneHotEncoder(handle_unknown='ignore'),
+            categorical_cols
+        ),
+        (
+            'num',
+            'passthrough',
+            numeric_cols
+        )
+    ]
+)
+
+# Model
+model = Pipeline([
+    ('preprocessor', preprocessor),
+    ('model', RandomForestRegressor())
+])
+
+# Train
+X_train, X_test, y_train, y_test = train_test_split(
+    X,
+    y,
+    test_size=0.2,
+    random_state=42
+)
+
+model.fit(X_train, y_train)
 
 # Inputs
 brand = st.selectbox(
-    "Select Brand",
-    df['brand'].unique()
+    "Brand",
+    sorted(df['brand'].unique())
 )
 
 year = st.slider(
@@ -34,7 +90,7 @@ condition = st.slider(
     10
 )
 
-# Prediction
+# Predict
 if st.button("Predict Price"):
 
     input_df = pd.DataFrame({
@@ -46,4 +102,6 @@ if st.button("Predict Price"):
 
     prediction = model.predict(input_df)
 
-    st.success(f"Estimated Car Price: ${prediction[0]:,.2f}")
+    st.success(
+        f"Estimated Price: ${prediction[0]:,.2f}"
+    )
