@@ -4,7 +4,7 @@ import joblib
 
 st.title("🤖 Car Price Prediction")
 
-model = joblib.load("model.pkl")
+#model = joblib.load("model.pkl")
 
 df = pd.read_csv("USA_cars_datasets.csv")
 
